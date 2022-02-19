@@ -8,7 +8,7 @@ from os import scandir
 from os.path import isdir
 
 class Sõit:
-    def __init__(self,t_algus, t_lõpp, hind, alguse_aadress="", arvenumber=None, makseviis=None, tellija=None, saaja_aadress=None, juriidilise_keha_registrikood=None, adressaadi_VAT_Number=None, adressaadi_VAT_number=None, juhi_juriidilise_isiku_nimi=None, juhi_juriidilise_isiku_aadress=None, juriidilise_isiku_registrikood=None, ettevõtte_VAT_number=None, hind_ilma_käibemaksuta=None, käibemaks_hinnas=None):
+    def __init__(self,t_algus, t_lõpp, hind, alguse_aadress="", arvenumber=None, makseviis=None, tellija=None, saaja_aadress=None, juriidilise_keha_registrikood=None, adressaadi_VAT_number=None, juhi_juriidilise_isiku_nimi=None, juhi_juriidilise_isiku_aadress=None, juriidilise_isiku_registrikood=None, ettevõtte_VAT_number=None, hind_ilma_käibemaksuta=None, käibemaks_hinnas=None):
         self.t_algus=t_algus
         self.t_lõpp=t_lõpp
         self.alguse_aadress=alguse_aadress
@@ -36,13 +36,13 @@ def loe_failidest(pathid):
                 loe_failist(file)
         else:
             loe_failist(path)
-    sõidud.sort(key=lambda x:x.t_algus)
+    sõidud.sort(key=lambda x:x["t_algus"])
 def loe_failist(file):
     file=open(file)
     csvreader=csv.reader(file)
     assert next(csvreader)==['Arve number', 'Kuupäev', 'Tellimuse aadress', 'Makseviis', 'Sõidu kuupäev', 'Saaja', 'Saaja aadress', 'Juriidilise keha registrikood', 'Adressaadi VAT Number', 'Juriidilise isiku nimi (juht)', 'Juriidilise isiku aadress (Tänav, maja, postiindeks, riik)', 'Juriidilise isiku registrikood', 'Ettevõtte VAT number', 'Hind (ilma KM)', 'KM', 'Lõpphind']
     for row in csvreader:
-        sõit=Sõit(t_algus=datetime.strptime(row[4],"%d.%m.%Y %H:%M"),t_lõpp=datetime.strptime(row[1],"%d.%m.%Y %H:%M")-timedelta(minutes=15),hind=float(row[15]))
+        sõit={"t_algus":datetime.strptime(row[4],"%d.%m.%Y %H:%M"),"t_lõpp":(datetime.strptime(row[1],"%d.%m.%Y %H:%M")-timedelta(minutes=15)),"hind":float(row[15]),"alguse_aadress":row[2],"arvenumber":row[0],"makseviis":row[3],"tellija":row[5],"saaja_aadress":row[6],"juriidilise_keha_registrikood":row[7],"adressaadi_VAT_number":row[8],"juhi_juriidilise_isiku_nimi":row[9],"juhi_juriidilise_isiku_aadress":row[10],"juriidilise_isiku_registrikood":row[11],"ettevõtte_VAT_number":row[12],"hind_ilma_käibemaksuta":row[13],"käibemaks_hinnas":row[14]}
         #arve_number=int(row[0])
         #row[13]=float(row[13])#hind käibemaksuta
         #row[14]=float(row[14])#käibemaks
@@ -54,10 +54,10 @@ def esimene_ja_viimane_sõit(sõidud):
     esimene=float("inf")
     viimane=-float("inf")
     for sõit in sõidud:
-        if sõit.t_algus.timestamp()<esimene:
-            esimene=sõit.t_algus.timestamp()
-        if sõit.t_algus.timestamp()>viimane:
-            viimane=sõit.t_algus.timestamp()
+        if sõit["t_algus"].timestamp()<esimene:
+            esimene=sõit["t_algus"].timestamp()
+        if sõit["t_algus"].timestamp()>viimane:
+            viimane=sõit["t_algus"].timestamp()
     return esimene,viimane
 def teenitud(t_arr):
     assert type(t_arr)==np.ndarray
@@ -66,8 +66,8 @@ def teenitud(t_arr):
         r=0
         sõite_sel_ajal=0
         for sõit in sõidud:
-            if sõit.t_algus.timestamp()<t_arr[i] and t_arr[i]<sõit.t_lõpp.timestamp():
-                r+=sõit.hind/(sõit.t_lõpp.timestamp()-sõit.t_algus.timestamp())
+            if sõit["t_algus"].timestamp()<t_arr[i] and t_arr[i]<sõit["t_lõpp"].timestamp():
+                r+=sõit["hind"]/(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())
                 if r!=0:
                     sõite_sel_ajal+=1
                     #print("kahe sõidu ajad kattuvad. t:",t_arr[i],"r:",r)
@@ -104,12 +104,14 @@ def visualiseeri(keskmistamise_standardhälve):
     #print("t_viimane:",t_viimane)
     print("keskmistamise_standardhälve:",keskmistamise_standardhälve)
     #keskmistamise_standardhälve=60*60*24
-    kuva_graafikud(teenitud,arvuta_keskmistatu(10000,keskmistamise_standardhälve,t_esimene,t_viimane),t_esimene,t_viimane,10000)
+    punkte=10000
+    kuva_graafikud(teenitud,arvuta_keskmistatu(punkte,keskmistamise_standardhälve,t_esimene,t_viimane),t_esimene,t_viimane,punkte)
 
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
+
 
 root = tk.Tk()
 root.title("Tab Widget")
@@ -126,13 +128,32 @@ def tab_vahetus(x):
         loe_failidest(failid)
         sõite_kokku_entry.delete(0, tk.END)
         sõite_kokku_entry.insert(0,str(len(sõidud)))
-        for row in tabel.get_children():
-            tabel.delete(row)
-        for i in range(len(sõidud)):
-            tabel.insert(parent='', index='end', iid=i, text='',values=(sõidud[i].t_algus,sõidud[i].t_lõpp,sõidud[i].hind))
+        uuenda_tabeli_sisu()
+def uuenda_tabeli_sisu():
+    for row in tabel.get_children():
+        tabel.delete(row)
+    global sõite_sõitjatega
+    sõite_sõitjatega={}
+    for sõit in sõidud:
+        if sõit["tellija"] in sõite_sõitjatega:
+            sõite_sõitjatega[sõit["tellija"]]+=1
+        else:
+            sõite_sõitjatega[sõit["tellija"]]=1
+    for i in range(len(sõidud)):
+        tabel.insert(parent='', index='end', iid=i, text='',values=(sõidud[i]["t_algus"],sõidud[i]["alguse_aadress"],sõidud[i]["t_lõpp"],sõidud[i]["hind"],sõidud[i]["tellija"],sõite_sõitjatega[sõidud[i]["tellija"]],sõidud[i]["arvenumber"],sõidud[i]["makseviis"],sõidud[i]["saaja_aadress"],sõidud[i]["juriidilise_keha_registrikood"],sõidud[i]["adressaadi_VAT_number"],sõidud[i]["juhi_juriidilise_isiku_nimi"],sõidud[i]["juhi_juriidilise_isiku_aadress"],sõidud[i]["juriidilise_isiku_registrikood"],sõidud[i]["ettevõtte_VAT_number"],sõidud[i]["hind_ilma_käibemaksuta"],sõidud[i]["käibemaks_hinnas"]))
 
-        #tabel.config(command=tabel.yview)
-        #tabel.config(command=tabel.xview)
+    laiused={}
+    #for kv in tabel.get_children()[0].items():
+    #    laiused[kv[0]]=0
+    laiused=[0]*len(kolumnid)
+    for line in tabel.get_children():
+        for i in range(len(tabel.item(line)['values'])):
+            if laiused[i]<len(str(tabel.item(line)['values'][i])):
+                laiused[i]=len(str(tabel.item(line)['values'][i]))
+    for i in range(len(kolumnid)):
+        tabel.column(kolumnid[i],width=laiused[i]*12)
+    tabel.column("t_algus",width=123)
+    tabel.column("t_lõpp", width=123)
 tabControl.bind("<<NotebookTabChanged>>", tab_vahetus)
 
 
@@ -166,26 +187,46 @@ tabControl.add(graafiku_tab,text='käibe graafik')
 
 nimekirja_tab = ttk.Frame(tabControl)
 tabControl.add(nimekirja_tab, text='sõitude nimekiri')
-ttk.Label(nimekirja_tab, text="sõite kokku:").grid(column=0, row=0)
-sõite_kokku_entry=ttk.Entry(nimekirja_tab)
-sõite_kokku_entry.grid(row=0,column=1)
-tabel=ttk.Treeview(nimekirja_tab)
-tabel['columns']=("t_algus", "t_lõpp", "hind","sõite sõitjaga", "alguse_aadress", "arvenumber","makseviis","tellija","saaja_aadress","juriidilise_keha_registrikood","adressaadi_VAT_Number","adressaadi_VAT_number","juhi_juriidilise_isiku_nimi","juhi_juriidilise_isiku_aadress","juriidilise_isiku_registrikood","ettevõtte_VAT_number","hind_ilma_käibemaksuta","käibemaks_hinnas")
+ttk.Label(nimekirja_tab, text="sõite kokku:").grid(column=0, row=1)
+sõite_kokku_entry=ttk.Entry(nimekirja_tab,state=tk.DISABLED)
+sõite_kokku_entry.grid(row=1,column=1)
+kolumnid=("t_algus","alguse_aadress","t_lõpp","hind","tellija","sõite tellijaga","arvenumber","makseviis","saaja_aadress","juriidilise_keha_registrikood","adressaadi_VAT_number","juhi_juriidilise_isiku_nimi","juhi_juriidilise_isiku_aadress","juriidilise_isiku_registrikood","ettevõtte_VAT_number","hind_ilma_käibemaksuta","käibemaks_hinnas")
+tabel=ttk.Treeview(nimekirja_tab,columns=kolumnid,show="headings")
+# scrollbars
+#vsb = ttk.Scrollbar(nimekirja_tab, orient="vertical", command=tabel.yview)
+#vsb.place(relx=0.978, rely=0.175, relheight=0.713, relwidth=0.020)
+#hsb = ttk.Scrollbar(nimekirja_tab, orient="horizontal", command=tabel.xview)
+#hsb.place(relx=0.014, rely=0.875, relheight=0.020, relwidth=0.965)
+#tabel.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
-tabel.column("#0", width=0,  stretch=tk.NO)
+lahter_mille_järgi_viimati_sorditi=False
+def treeview_sort_column(tabel, col, reverse):
+    global lahter_mille_järgi_viimati_sorditi
+    reverse=lahter_mille_järgi_viimati_sorditi==col
+    lahter_mille_järgi_viimati_sorditi=col
+    if col=="sõite tellijaga":
+        sõidud.sort(key=lambda x: sõite_sõitjatega[x["tellija"]],reverse=reverse)
+    else:
+        sõidud.sort(key=lambda x:x[col],reverse=reverse)
+    uuenda_tabeli_sisu()
+for col in kolumnid:
+    tabel.column(col,anchor=tk.CENTER, stretch=tk.NO)
+    tabel.heading(col, text=col, command=lambda _col=col: treeview_sort_column(tabel, _col, False))
+
+#tabel.column("#0", width=0,  stretch=tk.NO)
 #tabel.column("t_algus",anchor=tk.CENTER, width=80)
-tabel.column("t_lõpp",anchor=tk.CENTER,width=80)
-tabel.column("hind",anchor=tk.CENTER,width=80)
+#tabel.column("t_lõpp",anchor=tk.CENTER,width=80)
+#tabel.column("hind",anchor=tk.CENTER,width=80)
 
-tabel.heading("#0",text="",anchor=tk.CENTER)
-tabel.heading("t_algus",text="t_algus",anchor=tk.CENTER)
-tabel.heading("t_lõpp",text="t_lõpp",anchor=tk.CENTER)
-tabel.heading("hind",text="hind",anchor=tk.CENTER)
-tabel.heading("sõite sõitjaga",text="sõite sõitjaga",anchor=tk.CENTER)
+#tabel.heading("#0",text="",anchor=tk.CENTER)
+#tabel.heading("t_algus",text="t_algus",anchor=tk.CENTER)
+#tabel.heading("t_lõpp",text="t_lõpp",anchor=tk.CENTER)
+#tabel.heading("hind",text="hind",anchor=tk.CENTER)
+#tabel.heading("sõite sõitjaga",text="sõite sõitjaga",anchor=tk.CENTER)
 
-tabel.grid(row=2)
+tabel.grid(row=0)
 
-tabControl.pack(expand=1, fill="both")
+tabControl.pack(expand=1,fill="both")
 
 ttk.Label(graafiku_tab, text="üle kui pika ajavahemiku keskmistada:").grid(column=0, row=0)
 keskmistamise_stdev=ttk.Entry(graafiku_tab)
@@ -207,6 +248,6 @@ def kuva_graafik():
     else:
         assert value_inside.get()=="sekundit"
     visualiseeri(stdev)
-ttk.Button(graafiku_tab, text="kuva graafik", command=kuva_graafik).grid(column=0, row=1)
+ttk.Button(graafiku_tab, text="kuva graafik", command=kuva_graafik).grid(column=0,row=1)
 
 root.mainloop()
