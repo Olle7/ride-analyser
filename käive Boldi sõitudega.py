@@ -6,25 +6,8 @@ import matplotlib.dates as mdates
 import csv
 from os import scandir
 from os.path import isdir
+from math import pi,e
 
-class Sõit:
-    def __init__(self,t_algus, t_lõpp, hind, alguse_aadress="", arvenumber=None, makseviis=None, tellija=None, saaja_aadress=None, juriidilise_keha_registrikood=None, adressaadi_VAT_number=None, juhi_juriidilise_isiku_nimi=None, juhi_juriidilise_isiku_aadress=None, juriidilise_isiku_registrikood=None, ettevõtte_VAT_number=None, hind_ilma_käibemaksuta=None, käibemaks_hinnas=None):
-        self.t_algus=t_algus
-        self.t_lõpp=t_lõpp
-        self.alguse_aadress=alguse_aadress
-        self.arvenumber=arvenumber
-        self.makseviis=makseviis
-        self.tellija=tellija
-        self.saaja_aadress=saaja_aadress
-        self.juriidilise_keha_registrikood=juriidilise_keha_registrikood
-        self.adressaadi_VAT_number=adressaadi_VAT_number
-        self.juhi_juriidilise_isiku_nimi=juhi_juriidilise_isiku_nimi
-        self.juhi_juriidilise_isiku_aadress=juhi_juriidilise_isiku_aadress
-        self.juriidilise_isiku_registrikood=juriidilise_isiku_registrikood
-        self.ettevõtte_VAT_number=ettevõtte_VAT_number
-        self.hind_ilma_käibemaksuta=hind_ilma_käibemaksuta
-        self.käibemaks_hinnas=käibemaks_hinnas
-        self.hind=hind
 failide_loend_sõitude_sisse_lugemise_ajal=""
 def loe_failidest(pathid):
     global sõidud,failide_loend_sõitude_sisse_lugemise_ajal
@@ -95,17 +78,47 @@ def kuva_graafikud(originaal, keskmistatud, x0, x1, punkte):
     plt.show()
 def arvuta_keskmistatu(punkte,keskmistamise_periood_sekundites,t_esimene,t_viimane):
     xp = np.linspace(t_esimene,t_viimane,punkte)
+    print(":::",type(xp))
     argument_sigma=keskmistamise_periood_sekundites*punkte/(t_viimane-t_esimene)
     keskmistatud=gaussian_filter(teenitud(xp),sigma=argument_sigma)
     return keskmistatud
+
+def arvuta_keskmistatu2(punkte,keskmistamise_periood_sekundites,t_esimene,t_viimane):
+    väljund=np.ndarray((punkte,))
+    s=keskmistamise_periood_sekundites
+    dt=(t_viimane-t_esimene)/punkte
+    for i in range(punkte):
+        t=i*dt
+        väljund[i]=0
+        for sõit in sõidud:
+            print(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())
+            väljund[i]+=(-2*sõit["hind"]/(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())*e**(-t/(2*s**2))*(e**(sõit["t_algus"].timestamp()/(2*s**2))-e**(sõit["t_lõpp"].timestamp()/(2*s**2)))*s**2)/((2*pi)**(1/2)*s)
+
+
 def visualiseeri(keskmistamise_standardhälve):
     t_esimene,t_viimane=esimene_ja_viimane_sõit(sõidud)
+    kordaja=1
+    if boldi_vahendustasu_maha.get():
+        kordaja*=0.8
+    if tulumaks_maha.get():
+        kordaja*=0.8
+    liitja=-float(konstantne_kulu.get())
+    if konstantse_kulu_ühik.get()=="minutis":
+        liitja/=60
+    elif konstantse_kulu_ühik.get()=="tunnis":
+        liitja/=60*60
+    elif konstantse_kulu_ühik.get()=="ööpäevas":
+        liitja/=60*60*24
+    elif konstantse_kulu_ühik.get()=="nädalas":
+        liitja/=60*60*24*7
+    else:
+        assert value_inside.get()=="sekundit"
     #print("t_esimene:",t_esimene)
     #print("t_viimane:",t_viimane)
     print("keskmistamise_standardhälve:",keskmistamise_standardhälve)
-    #keskmistamise_standardhälve=60*60*24
+
     punkte=10000
-    kuva_graafikud(teenitud,arvuta_keskmistatu(punkte,keskmistamise_standardhälve,t_esimene,t_viimane),t_esimene,t_viimane,punkte)
+    kuva_graafikud(lambda x:teenitud(x)*kordaja+liitja,arvuta_keskmistatu(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja,t_esimene,t_viimane,punkte)
 
 
 import tkinter as tk
@@ -184,6 +197,43 @@ ttk.Button(sisendfailide_tab, text="vali kaust, kust kviitugifaile otsida", comm
 
 graafiku_tab = ttk.Frame(tabControl)
 tabControl.add(graafiku_tab,text='käibe graafik')
+ttk.Label(graafiku_tab, text="üle kui pika ajavahemiku keskmistada:").grid(column=0, row=0)
+keskmistamise_stdev=ttk.Entry(graafiku_tab)
+keskmistamise_stdev.insert(tk.END,"1")
+keskmistamise_stdev.grid(column=1,row=0)
+value_inside=tk.StringVar(root)
+#value_inside.set("ööpäeva")
+ttk.OptionMenu(graafiku_tab, value_inside,"ööpäeva", "sekundit", "minutit", "tundi", "ööpäeva").grid(column=2, row=0)
+def kuva_graafik():
+    stdev=float(keskmistamise_stdev.get())
+    print("stdev:",stdev)
+    print("value_inside:",value_inside.get())
+    if value_inside.get()=="minutit":
+        stdev*=60
+    elif value_inside.get()=="tundi":
+        stdev*=60*60
+    elif value_inside.get()=="ööpäeva":
+        stdev*=60*60*24
+    else:
+        assert value_inside.get()=="sekundit"
+    visualiseeri(stdev)
+ttk.Label(graafiku_tab, text="arvuta maha boldi vahendustasu:").grid(column=0, row=1)
+boldi_vahendustasu_maha=tk.IntVar()
+boldi_vahendustasu_maha.set(1)
+ttk.Checkbutton(graafiku_tab,variable=boldi_vahendustasu_maha, onvalue=1,offvalue=0).grid(column=1,row=1)
+ttk.Label(graafiku_tab, text="arvuta maha tulumaks:").grid(column=0, row=2)
+tulumaks_maha=tk.IntVar()
+tulumaks_maha.set(1)
+ttk.Checkbutton(graafiku_tab,variable=tulumaks_maha, onvalue=1,offvalue=0).grid(column=1,row=2)
+
+ttk.Label(graafiku_tab, text="konstantne kulu maha:").grid(column=0, row=3)
+konstantne_kulu=ttk.Entry(graafiku_tab)
+konstantne_kulu.insert(tk.END,"125")
+konstantne_kulu.grid(column=1,row=3)
+ttk.Label(graafiku_tab, text="eurot/").grid(column=2, row=3)
+konstantse_kulu_ühik=tk.StringVar(root)
+ttk.OptionMenu(graafiku_tab,konstantse_kulu_ühik,"nädalas","nädalas","ööpäevas", "sekundis", "minutis", "tunnis").grid(column=3, row=3)
+ttk.Button(graafiku_tab,text="kuva graafik",command=kuva_graafik).grid(column=0,row=4)
 
 nimekirja_tab = ttk.Frame(tabControl)
 tabControl.add(nimekirja_tab, text='sõitude nimekiri')
@@ -228,26 +278,7 @@ tabel.grid(row=0)
 
 tabControl.pack(expand=1,fill="both")
 
-ttk.Label(graafiku_tab, text="üle kui pika ajavahemiku keskmistada:").grid(column=0, row=0)
-keskmistamise_stdev=ttk.Entry(graafiku_tab)
-keskmistamise_stdev.insert(tk.END,"1")
-keskmistamise_stdev.grid(column=1,row=0)
-value_inside=tk.StringVar(root)
-value_inside.set("ööpäeva")
-ttk.OptionMenu(graafiku_tab, value_inside,"ööpäeva", "sekundit", "minutit", "tundi", "ööpäeva").grid(column=2, row=0)
-def kuva_graafik():
-    stdev=float(keskmistamise_stdev.get())
-    print("stdev:",stdev)
-    print("value_inside:",value_inside.get())
-    if value_inside.get()=="minutit":
-        stdev*=60
-    elif value_inside.get()=="tundi":
-        stdev*=60*60
-    elif value_inside.get()=="ööpäeva":
-        stdev*=60*60*24
-    else:
-        assert value_inside.get()=="sekundit"
-    visualiseeri(stdev)
-ttk.Button(graafiku_tab, text="kuva graafik", command=kuva_graafik).grid(column=0,row=1)
+
+
 
 root.mainloop()
