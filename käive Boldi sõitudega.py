@@ -102,6 +102,8 @@ def visualiseeri(keskmistamise_standardhälve):
         kordaja*=0.8
     if tulumaks_maha.get():
         kordaja*=0.8
+    if kütusehind_maha.get():
+        kordaja*=1-0.14
     liitja=-float(konstantne_kulu.get())
     if konstantse_kulu_ühik.get()=="minutis":
         liitja/=60
@@ -217,23 +219,27 @@ def kuva_graafik():
     else:
         assert value_inside.get()=="sekundit"
     visualiseeri(stdev)
-ttk.Label(graafiku_tab, text="arvuta maha boldi vahendustasu:").grid(column=0, row=1)
+ttk.Label(graafiku_tab, text="arvuta maha boldi vahendustasu 20%:").grid(column=0, row=1)
 boldi_vahendustasu_maha=tk.IntVar()
 boldi_vahendustasu_maha.set(1)
 ttk.Checkbutton(graafiku_tab,variable=boldi_vahendustasu_maha, onvalue=1,offvalue=0).grid(column=1,row=1)
-ttk.Label(graafiku_tab, text="arvuta maha tulumaks:").grid(column=0, row=2)
+ttk.Label(graafiku_tab, text="arvuta maha tulumaks 20%:").grid(column=0, row=2)
 tulumaks_maha=tk.IntVar()
 tulumaks_maha.set(1)
-ttk.Checkbutton(graafiku_tab,variable=tulumaks_maha, onvalue=1,offvalue=0).grid(column=1,row=2)
+ttk.Checkbutton(graafiku_tab,variable=tulumaks_maha,onvalue=1,offvalue=0).grid(column=1,row=2)
+ttk.Label(graafiku_tab, text="kütusehind 14%:").grid(column=0, row=3)
+kütusehind_maha=tk.IntVar()
+kütusehind_maha.set(1)
+ttk.Checkbutton(graafiku_tab,variable=kütusehind_maha,onvalue=1,offvalue=0).grid(column=1,row=3)
 
-ttk.Label(graafiku_tab, text="konstantne kulu maha:").grid(column=0, row=3)
+ttk.Label(graafiku_tab, text="konstantne kulu maha:").grid(column=0, row=4)
 konstantne_kulu=ttk.Entry(graafiku_tab)
 konstantne_kulu.insert(tk.END,"125")
-konstantne_kulu.grid(column=1,row=3)
-ttk.Label(graafiku_tab, text="eurot/").grid(column=2, row=3)
+konstantne_kulu.grid(column=1,row=4)
+ttk.Label(graafiku_tab, text="eurot/").grid(column=2, row=4)
 konstantse_kulu_ühik=tk.StringVar(root)
-ttk.OptionMenu(graafiku_tab,konstantse_kulu_ühik,"nädalas","nädalas","ööpäevas", "sekundis", "minutis", "tunnis").grid(column=3, row=3)
-ttk.Button(graafiku_tab,text="kuva graafik",command=kuva_graafik).grid(column=0,row=4)
+ttk.OptionMenu(graafiku_tab,konstantse_kulu_ühik,"nädalas","nädalas","ööpäevas", "sekundis", "minutis", "tunnis").grid(column=3, row=4)
+ttk.Button(graafiku_tab,text="kuva graafik",command=kuva_graafik).grid(column=0,row=5)
 
 nimekirja_tab = ttk.Frame(tabControl)
 tabControl.add(nimekirja_tab, text='sõitude nimekiri')
