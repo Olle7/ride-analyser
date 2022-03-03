@@ -95,7 +95,8 @@ def arvuta_keskmistatu2(punkte,keskmistamise_periood_sekundites,t_esimene,t_viim
             väljund[i]+=(-2*sõit["hind"]/(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())*e**(-t/(2*s**2))*(e**(sõit["t_algus"].timestamp()/(2*s**2))-e**(sõit["t_lõpp"].timestamp()/(2*s**2)))*s**2)/((2*pi)**(1/2)*s)
 
 
-def visualiseeri(keskmistamise_standardhälve):
+def visualiseeri():
+    keskmistamise_standardhälve=float(keskmistamise_stdev.get())*({"sekundit":1, "minutit":60, "tundi":60*60, "ööpäeva":60*60*24}[kesmistamisaja_ühik.get()])
     t_esimene,t_viimane=esimene_ja_viimane_sõit(sõidud)
     kordaja=1
     if boldi_vahendustasu_maha.get():
@@ -104,23 +105,13 @@ def visualiseeri(keskmistamise_standardhälve):
         kordaja*=0.8
     if kütusehind_maha.get():
         kordaja*=1-0.14
-    liitja=-float(konstantne_kulu.get())
-    if konstantse_kulu_ühik.get()=="minutis":
-        liitja/=60
-    elif konstantse_kulu_ühik.get()=="tunnis":
-        liitja/=60*60
-    elif konstantse_kulu_ühik.get()=="ööpäevas":
-        liitja/=60*60*24
-    elif konstantse_kulu_ühik.get()=="nädalas":
-        liitja/=60*60*24*7
-    else:
-        assert value_inside.get()=="sekundit"
-    #print("t_esimene:",t_esimene)
-    #print("t_viimane:",t_viimane)
-    print("keskmistamise_standardhälve:",keskmistamise_standardhälve)
-
+    liitja=-float(konstantne_kulu.get())/({"sekundis":1, "minutis":60, "tunnis":60*60, "ööpäevas":60*60*24,"nädalas":60*60*24*7}[konstantse_kulu_ühik.get()])
+    ühiku_kordaja={"rahaühikut/sekundis":1,"rahaühikut/minutis":1/60,"rahaühikut/tunnis":1/(60*60),"rahaühikut/ööpäevas":1/(60*60*24)}[käibe_ühik.get()]
+    # print("t_esimene:",t_esimene)
+    # print("t_viimane:",t_viimane)
+    # print("keskmistamise_standardhälve:",keskmistamise_standardhälve)
     punkte=10000
-    kuva_graafikud(lambda x:teenitud(x)*kordaja+liitja,arvuta_keskmistatu(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja,t_esimene,t_viimane,punkte)
+    kuva_graafikud(lambda x:(teenitud(x)*kordaja+liitja)*ühiku_kordaja,(arvuta_keskmistatu(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*ühiku_kordaja,t_esimene,t_viimane,punkte)
 
 
 import tkinter as tk
@@ -203,22 +194,9 @@ ttk.Label(graafiku_tab, text="üle kui pika ajavahemiku keskmistada:").grid(colu
 keskmistamise_stdev=ttk.Entry(graafiku_tab)
 keskmistamise_stdev.insert(tk.END,"1")
 keskmistamise_stdev.grid(column=1,row=0)
-value_inside=tk.StringVar(root)
+kesmistamisaja_ühik=tk.StringVar(root)
 #value_inside.set("ööpäeva")
-ttk.OptionMenu(graafiku_tab, value_inside,"ööpäeva", "sekundit", "minutit", "tundi", "ööpäeva").grid(column=2, row=0)
-def kuva_graafik():
-    stdev=float(keskmistamise_stdev.get())
-    print("stdev:",stdev)
-    print("value_inside:",value_inside.get())
-    if value_inside.get()=="minutit":
-        stdev*=60
-    elif value_inside.get()=="tundi":
-        stdev*=60*60
-    elif value_inside.get()=="ööpäeva":
-        stdev*=60*60*24
-    else:
-        assert value_inside.get()=="sekundit"
-    visualiseeri(stdev)
+ttk.OptionMenu(graafiku_tab, kesmistamisaja_ühik, "ööpäeva", "sekundit", "minutit", "tundi", "ööpäeva").grid(column=2, row=0)
 ttk.Label(graafiku_tab, text="arvuta maha boldi vahendustasu 20%:").grid(column=0, row=1)
 boldi_vahendustasu_maha=tk.IntVar()
 boldi_vahendustasu_maha.set(1)
@@ -239,7 +217,13 @@ konstantne_kulu.grid(column=1,row=4)
 ttk.Label(graafiku_tab, text="eurot/").grid(column=2, row=4)
 konstantse_kulu_ühik=tk.StringVar(root)
 ttk.OptionMenu(graafiku_tab,konstantse_kulu_ühik,"nädalas","nädalas","ööpäevas", "sekundis", "minutis", "tunnis").grid(column=3, row=4)
-ttk.Button(graafiku_tab,text="kuva graafik",command=kuva_graafik).grid(column=0,row=5)
+
+ttk.Label(graafiku_tab, text="Mis ühikutes käivet kuvada:").grid(column=0, row=5)
+käibe_ühik=tk.StringVar(root)
+#value_inside.set("rahaühikut/tunnis")
+ttk.OptionMenu(graafiku_tab,käibe_ühik,"rahaühikut/tunnis","rahaühikut/sekundis","rahaühikut/minutis","rahaühikut/tunnis","rahaühikut/ööpäevas").grid(column=1,row=5)
+
+ttk.Button(graafiku_tab,text="kuva graafik",command=visualiseeri).grid(column=0,row=6)
 
 nimekirja_tab = ttk.Frame(tabControl)
 tabControl.add(nimekirja_tab, text='sõitude nimekiri')
