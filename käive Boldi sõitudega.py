@@ -1,24 +1,29 @@
 from scipy.ndimage import gaussian_filter
 from datetime import datetime,timedelta
 from time import time
+from scipy import stats
 import numpy as np
 import matplotlib.dates as mdates
 import csv
 from os import scandir
 from os.path import isdir
-from math import pi,e
+from math import pi,e,exp
+from matplotlib import pyplot as plt
 
 failide_loend_sõitude_sisse_lugemise_ajal=""
 def loe_failidest(pathid):
-    global sõidud,failide_loend_sõitude_sisse_lugemise_ajal
+    global sõidud,sõidud2,failide_loend_sõitude_sisse_lugemise_ajal
     failide_loend_sõitude_sisse_lugemise_ajal=pathid
     sõidud=[]
+    sõidud2=[]
     for path in pathid:
         if isdir(path):
             for file in scandir(path):
                 loe_failist(file)
+                loe_failist2(file)
         else:
             loe_failist(path)
+            loe_failist2(file)
     sõidud.sort(key=lambda x:x["t_algus"])
 def loe_failist(file):
     file=open(file)
@@ -32,7 +37,31 @@ def loe_failist(file):
         #row[15]=#hind käibemaksuga
         sõidud.append(sõit)
     #return sõidud
-#loe_failidest(["/home/olger/Documents/bolt/kviitungid"])
+    #loe_failidest(["/home/olger/Documents/bolt/kviitungid"])
+class Sõit:
+    def __init__(self,data):
+        if "Sõidu kuupäev" in data.keys():
+            #"Arve number","Kuupäev","Tellimuse aadress","Makseviis","Sõidu kuupäev","Saaja","Saaja aadress","Juriidilise keha registrikood","Adressaadi VAT Number","Juriidilise isiku nimi (juht)","Juriidilise isiku aadress (Tänav, maja, postiindeks, riik)","Juriidilise isiku registrikood","Ettevõtte VAT number","Hind (ilma KM)","KM","Lõpphind"
+            self.kvitungi_faili_data=data
+            self.sõidu_faili_data=None
+        else:
+            #"Tellimuse aeg","Tellimuse aadress","Sõidu hind","Broneeringu tasu","Teemaks","Tühistamise tasu","Jootraha","Valuuta","Maksemeetod","Makse aeg","Distants","Olek"
+            self.sõidu_faili_data=data
+            self.kvitungi_faili_data=None
+    def __str__(self):
+        return "sõidu_faili_data="+str(self.sõidu_faili_data)+";kvitungi_faili_data="+str(self.kvitungi_faili_data)
+    def hind(self):
+        return float(self.kvitungi_faili_data["Lõpphind"])
+    def t_sõidu_algus(self):
+        return datetime.strptime(self.kvitungi_faili_data["Sõidu kuupäev"],"%d.%m.%Y %H:%M").timestamp()
+    def t_tellimine(self):
+        return datetime.strptime(self.kvitungi_faili_data["Tellimuse aeg"],"%d.%m.%Y %H:%M").timestamp()
+    def t_sõidu_lõpp(self):
+        pass
+def loe_failist2(file):
+    fail=open(file)
+    for row in csv.DictReader(fail,skipinitialspace=True):
+        sõidud2.append(Sõit({k: v for k, v in row.items()}))
 def esimene_ja_viimane_sõit(sõidud):
     esimene=float("inf")
     viimane=-float("inf")
@@ -58,15 +87,15 @@ def teenitud(t_arr):
         #print("t:",t_arr[i],"r:",r,"sõite sel ajal:",sõite_sel_ajal)
     return r_per_t_arr
 def kuva_graafikud(originaal, keskmistatud, x0, x1, punkte):
-    from matplotlib import pyplot as plt
     plt.rcParams["figure.figsize"] = [7.50, 3.50]
     plt.rcParams["figure.autolayout"] = True
     x = np.linspace(x0,x1,punkte)
     dates=[datetime.fromtimestamp(ts) for ts in x]
     algus = time()#ajutine
+    print("joonistamine algas.")
     plt.plot(dates,originaal(x),color='black',alpha=0.5)
     plt.plot(dates,keskmistatud,color='blue')
-    print("aega_võttis:",time()-algus)#ajutine
+    print("joonuistamine aega võttis:",time()-algus)#ajutine
     #punkte,aega:
     #10000,19.416457653045654
     #10000,19.743277549743652
@@ -76,24 +105,60 @@ def kuva_graafikud(originaal, keskmistatud, x0, x1, punkte):
     plt.gca().xaxis.set_major_formatter(myFmt)
     plt.ylim(bottom=min(keskmistatud),top=max(keskmistatud))
     plt.show()
-def arvuta_keskmistatu(punkte,keskmistamise_periood_sekundites,t_esimene,t_viimane):
-    xp = np.linspace(t_esimene,t_viimane,punkte)
-    print(":::",type(xp))
+def arvuta_keskmistatu1(punkte, keskmistamise_periood_sekundites, t_esimene, t_viimane):
+    t_keskmistamise_algus=time()
+    xp=np.linspace(t_esimene,t_viimane,punkte)
     argument_sigma=keskmistamise_periood_sekundites*punkte/(t_viimane-t_esimene)
     keskmistatud=gaussian_filter(teenitud(xp),sigma=argument_sigma)
+    print("keskmistamine1 keskmistamine võttis aega:",time()-t_keskmistamise_algus)
     return keskmistatud
-
+def arvuta_keskmistatu3(punkte,keskmistamise_periood_sekundites,t_esimene,t_viimane):
+    t_keskmistamise_algus = time()
+    väljund=np.zeros(5)
+    #gaussian=[]
+    #for i in range(-punkte,punkte)
+    ajad=np.linspace(t_esimene,t_viimane,punkte)
+    for sõit in sõidud:
+        n=stats.norm(sõit["t_algus"].timestamp(),keskmistamise_periood_sekundites)
+        väljund+=n(ajad)
+    print("keskmistamine2 võttis aega:", time() - t_keskmistamise_algus)
+    return väljund
 def arvuta_keskmistatu2(punkte,keskmistamise_periood_sekundites,t_esimene,t_viimane):
+    t_keskmistamise_algus = time()
     väljund=np.ndarray((punkte,))
     s=keskmistamise_periood_sekundites
     dt=(t_viimane-t_esimene)/punkte
     for i in range(punkte):
-        t=i*dt
+        t=t_esimene+i*dt
         väljund[i]=0
-        for sõit in sõidud:
-            print(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())
-            väljund[i]+=(-2*sõit["hind"]/(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())*e**(-t/(2*s**2))*(e**(sõit["t_algus"].timestamp()/(2*s**2))-e**(sõit["t_lõpp"].timestamp()/(2*s**2)))*s**2)/((2*pi)**(1/2)*s)
 
+        väline_jagaja=(2*pi)**(1/2)*s
+        e_peal_jagaja=-2*s**2
+        for sõit in sõidud:
+            if False:
+                #print(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())
+                väljund[i]+=(-2*sõit["hind"]/(sõit["t_lõpp"].timestamp()-sõit["t_algus"].timestamp())*e**(-t/(2*s**2))*(e**(sõit["t_algus"].timestamp()/(2*s**2))-e**(sõit["t_lõpp"].timestamp()/(2*s**2)))*s**2)/((2*pi)**(1/2)*s)
+            else:
+                #print(t-sõit["t_algus"].timestamp())
+                väljund[i]+=sõit["hind"]*exp((t-sõit["t_algus"].timestamp())**2/e_peal_jagaja)/väline_jagaja
+    print("keskmistamine2 võttis aega:", time() - t_keskmistamise_algus)
+    return väljund
+
+def kahe_keskmistamise_graafikud(keskmistatud1, keskmistatud2, x0, x1, punkte):
+    plt.rcParams["figure.figsize"] = [7.50, 3.50]
+    plt.rcParams["figure.autolayout"] = True
+    x = np.linspace(x0,x1,punkte)
+    dates=[datetime.fromtimestamp(ts) for ts in x]
+    algus = time()#ajutine
+    print("joonistamine algas.")
+    plt.plot(dates,keskmistatud1,color='red')
+    plt.plot(dates,keskmistatud2,color='green')
+    print("joonistamine aega võttis:",time()-algus)
+    plt.gcf().autofmt_xdate()
+    myFmt = mdates.DateFormatter("%d.%m.%Y %H:%M")
+    plt.gca().xaxis.set_major_formatter(myFmt)
+    plt.ylim(bottom=min(keskmistatud1),top=max(keskmistatud1))
+    plt.show()
 
 def visualiseeri():
     keskmistamise_standardhälve=float(keskmistamise_stdev.get())*({"sekundit":1, "minutit":60, "tundi":60*60, "ööpäeva":60*60*24}[kesmistamisaja_ühik.get()])
@@ -111,7 +176,9 @@ def visualiseeri():
     # print("t_viimane:",t_viimane)
     # print("keskmistamise_standardhälve:",keskmistamise_standardhälve)
     punkte=10000
-    kuva_graafikud(lambda x:(teenitud(x)*kordaja+liitja)*ühiku_kordaja,(arvuta_keskmistatu(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*ühiku_kordaja,t_esimene,t_viimane,punkte)
+    #print(arvuta_keskmistatu2(punkte,keskmistamise_standardhälve,t_esimene,t_viimane))
+    kuva_graafikud(lambda x:(teenitud(x)*kordaja+liitja)*ühiku_kordaja,(arvuta_keskmistatu2(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*ühiku_kordaja,t_esimene,t_viimane,punkte)
+    #kahe_keskmistamise_graafikud((arvuta_keskmistatu1(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*ühiku_kordaja,(arvuta_keskmistatu2(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*ühiku_kordaja,t_esimene,t_viimane,punkte)
 
 
 import tkinter as tk
