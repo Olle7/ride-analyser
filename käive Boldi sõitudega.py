@@ -43,7 +43,7 @@ class Sõit:
         if "Sõidu kuupäev" in data.keys():
             #"Arve number","Kuupäev","Tellimuse aadress","Makseviis","Sõidu kuupäev","Saaja","Saaja aadress","Juriidilise keha registrikood","Adressaadi VAT Number","Juriidilise isiku nimi (juht)","Juriidilise isiku aadress (Tänav, maja, postiindeks, riik)","Juriidilise isiku registrikood","Ettevõtte VAT number","Hind (ilma KM)","KM","Lõpphind"
             self.kvitungi_faili_data=data
-            self.sõidu_faili_data=None#1
+            self.sõidu_faili_data=None#12
         else:
             #"Tellimuse aeg","Tellimuse aadress","Sõidu hind","Broneeringu tasu","Teemaks","Tühistamise tasu","Jootraha","Valuuta","Maksemeetod","Makse aeg","Distants","Olek"
             self.sõidu_faili_data=data
