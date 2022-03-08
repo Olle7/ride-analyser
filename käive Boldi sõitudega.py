@@ -11,12 +11,14 @@ from matplotlib import pyplot as plt
 from scipy import special
 from sys import argv
 t_esimene=None
-t_viimane=None#123
-default_values=["/home/olger/Documents/bolt/kviitungid\n/home/olger/Documents/bolt/sõidud","1","ööpäeva","1","1","1","125","rahaühikut/nädalas","rahaühikut/ööpäevas","50000","12000"]
+t_viimane=None
+default_values=["/home/olger/Documents/bolt/kviitungid\n/home/olger/Documents/bolt/sõidud","1","ööpäeva","0","0","0","0","rahaühikut/kuus","rahaühikut/ööpäevas","50000","12000"]
 for i in range(len(argv)-1):
-    default_values[i]=argv[i+1]#
+    if argv[i+1]!="-n":
+        default_values[i]=argv[i+1]
 
-ühiku_kordaja={"rahaühikut/sekundis":1,"rahaühikut/minutis":60,"rahaühikut/tunnis":60*60,"rahaühikut/ööpäevas":60*60*24,"rahaühikut/nädalas":60*60*24*7}
+ühiku_kordaja={"rahaühikut/sekundis":1,"rahaühikut/minutis":60,"rahaühikut/tunnis":60*60,"rahaühikut/ööpäevas":60*60*24,"rahaühikut/nädalas":60*60*24*7,"rahaühikut/kuus":60*60*24*30}
+ühikud2={"sekundit":1, "minutit":60, "tundi":60*60, "ööpäeva":60*60*24,"nädalat":60*60*24*7,"kuud":60*60*24*30}
 failide_loend_sõitude_sisse_lugemise_ajal=""
 def loe_failidest(pathid):
     global sõidud2,failide_loend_sõitude_sisse_lugemise_ajal,kviitungi_faili_kirjed,sõidu_faili_kirjed
@@ -114,7 +116,7 @@ def esimene_ja_viimane_sõit():
         if sõit.t_sõidu_algus(hinnanguline=True)>viimane:
             viimane=sõit.t_sõidu_algus(hinnanguline=True)
     return esimene,viimane
-def teenitud2(punkte, t_esimene, t_viimane):
+def teenitud2(punkte):
     algus=time()
     väljund=zeros(punkte)
     for i_sõit in range(len(sõidud2)):
@@ -123,12 +125,12 @@ def teenitud2(punkte, t_esimene, t_viimane):
     print("keskmistamta graafiku koostamine võttis aega:",time()-algus)
     return väljund
 
-def kuva_graafikud(originaal, keskmistatud, x0, x1,y_ühik):
+def kuva_graafikud(originaal, keskmistatud,y_ühik):
     algus = time()
     plt.rcParams["figure.figsize"] = [7.50, 3.50]
     plt.rcParams["figure.autolayout"] = True
-    plt.plot([datetime.fromtimestamp(ts) for ts in linspace(x0,x1,len(originaal))],originaal,color='black',alpha=0.5)
-    plt.plot([datetime.fromtimestamp(ts) for ts in linspace(x0,x1,len(keskmistatud))],keskmistatud,color='blue')
+    plt.plot([datetime.fromtimestamp(ts) for ts in linspace(t_esimene,t_viimane,len(originaal))],originaal,color='black',alpha=0.5)
+    plt.plot([datetime.fromtimestamp(ts) for ts in linspace(t_esimene,t_viimane,len(keskmistatud))],keskmistatud,color='blue')
     #punkte,aega:
     #10000,19.416457653045654
     #10000,19.743277549743652
@@ -141,19 +143,19 @@ def kuva_graafikud(originaal, keskmistatud, x0, x1,y_ühik):
     plt.title("Raha Bolt sõitudega")
     print("joonistamine aega võttis:", time() - algus)
     plt.show()
-def arvuta_keskmistatu2(punkte, keskmistamise_periood_sekundites, t_esimene, t_viimane):
+def arvuta_keskmistatu2(punkte, keskmistamise_periood_sekundites):
     t_keskmistamise_algus=time()
     väljund=zeros(punkte)
     s_sqrt2=keskmistamise_periood_sekundites*2**0.5
-    t_esimene/=s_sqrt2
-    t_viimane/=s_sqrt2
+    t_esimene_jagatud_s_sqrt2=t_esimene/s_sqrt2
+    t_viimane_jagatud_s_sqrt2=t_viimane/s_sqrt2
     #väline_jagaja=(2*pi)**(1/2)*s_sqrt2
     #e_peal_jagaja=-2*s_sqrt2**2
     for i_sõit in range(len(sõidud2)):
         if raha_aja_kohta[i_sõit]!=0:
             alguse_aeg=alguse_ajad[i_sõit]/s_sqrt2
             lõpu_aeg=lõpu_ajad[i_sõit]/s_sqrt2
-            väljund+=(special.erf(linspace(t_esimene-alguse_aeg,t_viimane-alguse_aeg,punkte))-special.erf(linspace(t_esimene-lõpu_aeg,t_viimane-lõpu_aeg,punkte)))*(raha_aja_kohta[i_sõit]/2)
+            väljund+=(special.erf(linspace(t_esimene_jagatud_s_sqrt2-alguse_aeg,t_viimane_jagatud_s_sqrt2-alguse_aeg,punkte))-special.erf(linspace(t_esimene_jagatud_s_sqrt2-lõpu_aeg,t_viimane_jagatud_s_sqrt2-lõpu_aeg,punkte)))*(raha_aja_kohta[i_sõit]/2)
     print("keskmistamine2 võttis aega:",time()-t_keskmistamise_algus)
     return väljund
 
@@ -174,8 +176,7 @@ def kahe_keskmistamise_graafikud(keskmistatud1, keskmistatud2, x0, x1, punkte):
     plt.show()
 
 def visualiseeri():
-    keskmistamise_standardhälve=float(keskmistamise_stdev.get())*({"sekundit":1, "minutit":60, "tundi":60*60, "ööpäeva":60*60*24}[kesmistamisaja_ühik.get()])
-    t_esimene,t_viimane=esimene_ja_viimane_sõit()
+    keskmistamise_standardhälve=float(keskmistamise_stdev.get())*(ühikud2[kesmistamisaja_ühik.get()])
     kordaja=1
     if boldi_vahendustasu_maha.get():
         kordaja*=0.8
@@ -189,7 +190,7 @@ def visualiseeri():
     #punkte=10000
     #print(arvuta_keskmistatu2(punkte,keskmistamise_standardhälve,t_esimene,t_viimane))
     
-    kuva_graafikud((teenitud2(int(punkte_keskmistamata_graafikul.get()), t_esimene, t_viimane) * kordaja + liitja) * graafikul_ühiku_kordaja, (arvuta_keskmistatu2(int(punkte_keskmistatud_graafikul.get()), keskmistamise_standardhälve, t_esimene, t_viimane) * kordaja + liitja) * graafikul_ühiku_kordaja, t_esimene, t_viimane,käibe_ühik.get())
+    kuva_graafikud((teenitud2(int(punkte_keskmistamata_graafikul.get())) * kordaja + liitja) * graafikul_ühiku_kordaja, (arvuta_keskmistatu2(int(punkte_keskmistatud_graafikul.get()), keskmistamise_standardhälve) * kordaja + liitja) * graafikul_ühiku_kordaja,käibe_ühik.get())
     #kahe_keskmistamise_graafikud((arvuta_keskmistatu1(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*graafikul_ühiku_kordaja,(arvuta_keskmistatu2(punkte,keskmistamise_standardhälve,t_esimene,t_viimane)*kordaja+liitja)*graafikul_ühiku_kordaja,t_esimene,t_viimane,punkte)
 
 import tkinter as tk
@@ -261,10 +262,10 @@ def uuenda_tabeli_sisu():
     tabel['columns']=list(arvutatud_võtmed.keys())+võtmed_datast
     for võti in arvutatud_võtmed.keys():
         tabel.column(võti, anchor=tk.CENTER, stretch=tk.NO,width=59)
-        tabel.heading(võti,text=võti, command=lambda _col=võti: treeview_sort_column(tabel, _col, False,arvutatud_võtmed))
+        tabel.heading(võti,text=võti, command=lambda _col=võti: treeview_sort_column(_col,arvutatud_võtmed))
     for võti in võtmed_datast:
         tabel.column(võti, anchor=tk.CENTER, stretch=tk.NO,width=59)
-        tabel.heading(võti,text=võti[0]+" : "+võti[1], command=lambda _col=võti: treeview_sort_column(tabel, _col, False,arvutatud_võtmed))
+        tabel.heading(võti,text=võti[0]+" : "+võti[1], command=lambda _col=võti: treeview_sort_column(_col,arvutatud_võtmed))
         #tabel.heading(võti, text=võti, command=lambda _col=võti: treeview_sort_column(tabel, _col, False))
 
     for i_sõit in range(len(sõidud2)):
@@ -356,7 +357,7 @@ keskmistamise_stdev.insert(tk.END,default_values[1])
 keskmistamise_stdev.grid(column=1,row=0)
 kesmistamisaja_ühik=tk.StringVar(root)
 #value_inside.set("ööpäeva")
-ttk.OptionMenu(graafiku_tab, kesmistamisaja_ühik,default_values[2], "sekundit", "minutit", "tundi", "ööpäeva").grid(column=2, row=0)
+ttk.OptionMenu(graafiku_tab, kesmistamisaja_ühik,default_values[2],*ühikud2.keys()).grid(column=2, row=0)
 ttk.Label(graafiku_tab, text="arvuta maha boldi vahendustasu 20%:").grid(column=0, row=1)
 boldi_vahendustasu_maha=tk.IntVar()
 boldi_vahendustasu_maha.set(int(default_values[3]))
@@ -422,7 +423,7 @@ tabel=ttk.Treeview(nimekirja_tab,show="headings")
 #tabel.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
 lahter_mille_järgi_viimati_sorditi=False
-def treeview_sort_column(tabel, col, reverse,sortimis_funktsioonid):
+def treeview_sort_column(col,sortimis_funktsioonid):
     global lahter_mille_järgi_viimati_sorditi
     if lahter_mille_järgi_viimati_sorditi==col:
         reverse=True
@@ -430,7 +431,6 @@ def treeview_sort_column(tabel, col, reverse,sortimis_funktsioonid):
     else:
         reverse=False
         lahter_mille_järgi_viimati_sorditi=col
-    print("col:",col,"; reverse:",reverse)
     if col[1]=="kviitungifailist":
         sõidud2.sort(key=lambda x:x.kviitungi_faili_data[col[0]],reverse=reverse)
     elif col[1]=="sõidufailist":
