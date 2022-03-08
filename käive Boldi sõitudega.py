@@ -131,6 +131,8 @@ def kuva_graafikud(originaal, keskmistatud,y_ühik):
     plt.rcParams["figure.autolayout"] = True
     plt.plot([datetime.fromtimestamp(ts) for ts in linspace(t_esimene,t_viimane,len(originaal))],originaal,color='black',alpha=0.5)
     plt.plot([datetime.fromtimestamp(ts) for ts in linspace(t_esimene,t_viimane,len(keskmistatud))],keskmistatud,color='blue')
+
+    #plt.fill_between([datetime.fromtimestamp(ts) for ts in linspace(t_esimene,t_viimane,len(originaal))],originaal, step="pre", alpha=0.2,color="black")
     #punkte,aega:
     #10000,19.416457653045654
     #10000,19.743277549743652
