@@ -1,0 +1,2 @@
+#!/bin/bash
+pyinstaller --noconfirm --onefile --windowed  "/home/olger/PycharmProjects/ride-analyser/käive Boldi sõitudega.py"

@@ -17,6 +17,8 @@ for i in range(len(argv)-1):
     if argv[i+1]!="-n":
         default_values[i]=argv[i+1]
 
+#todo: tõlkida
+
 ühiku_kordaja={"rahaühikut/sekundis":1,"rahaühikut/minutis":60,"rahaühikut/tunnis":60*60,"rahaühikut/ööpäevas":60*60*24,"rahaühikut/nädalas":60*60*24*7,"rahaühikut/kuus":60*60*24*30}
 ühikud2={"sekundit":1, "minutit":60, "tundi":60*60, "ööpäeva":60*60*24,"nädalat":60*60*24*7,"kuud":60*60*24*30}
 failide_loend_sõitude_sisse_lugemise_ajal=""
@@ -116,7 +118,7 @@ def esimene_ja_viimane_sõit():
         if sõit.t_sõidu_algus(hinnanguline=True)>viimane:
             viimane=sõit.t_sõidu_algus(hinnanguline=True)
     return esimene,viimane
-def teenitud2(punkte):
+def teenitud2(punkte):#todo: kui tellimus vastu võetud, siis teist värvi.
     algus=time()
     väljund=zeros(punkte)
     for i_sõit in range(len(sõidud2)):
